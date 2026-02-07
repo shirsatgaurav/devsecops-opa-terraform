@@ -1,0 +1,33 @@
+name: OPA Terraform Security Check
+
+on: [push]
+
+jobs:
+  security:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v2
+
+    - name: Terraform Init & Plan
+      run: |
+        cd terraform
+        terraform init
+        terraform plan -out=tfplan
+        terraform show -json tfplan > tfplan.json
+
+    - name: Install OPA
+      run: |
+        curl -L -o opa https://openpolicyagent.org/downloads/latest/opa_linux_amd64
+        chmod +x opa
+        sudo mv opa /usr/local/bin/opa
+
+    - name: Run OPA Policy
+      run: |
+        opa eval \
+        --data opa \
+        --input terraform/tfplan.json \
+        "data.terraform.security.deny"
